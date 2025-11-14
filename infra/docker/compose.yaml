@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: provenix_dev
+      POSTGRES_USER: provenix
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U provenix"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Open Policy Agent (OPA)
+  opa:
+    image: openpolicyagent/opa:latest-envoy
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./policies:/policies
+    command: 
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - /policies
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Provenix Server
+  provenix-server:
+    build:
+      context: ../..
+      dockerfile: infra/docker/server.Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PROVENIX_ENV: dev
+      PROVENIX__DATABASE__URL: postgresql://provenix:devpassword@postgres:5432/provenix_dev
+      PROVENIX__SECURITY__OPA_URL: http://opa:8181
+      PROVENIX__AUTH__JWT_SECRET: dev-secret-key-not-for-production-use-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: provenix-dev

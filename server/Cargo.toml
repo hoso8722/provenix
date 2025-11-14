@@ -1,0 +1,50 @@
+[package]
+name = "provenix-server"
+version = "0.1.0"
+edition = "2021"
+description = "Main API server with zero-trust security architecture"
+
+[[bin]]
+name = "pxs"
+path = "src/main.rs"
+
+[dependencies]
+provenix-corelib = { path = "../crates/corelib" }
+provenix-utils = { path = "../crates/utils" }
+
+# Web framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "auth", "trace"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Configuration
+config = "0.14"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Authentication & Authorization
+jsonwebtoken = "9.0"
+oauth2 = "4.4"
+
+# OPA integration
+reqwest = { version = "0.11", features = ["json"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "offline"] }
+
+# Logging & Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"

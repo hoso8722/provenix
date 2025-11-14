@@ -1,0 +1,21 @@
+[server]
+host = "0.0.0.0"
+port = 8080
+workers = 4
+
+[database]
+url = "postgresql://provenix:password@localhost:5432/provenix"
+max_connections = 20
+timeout = 30
+
+[auth]
+jwt_secret = "your-super-secret-jwt-key-change-in-production-minimum-32-chars"
+oidc_issuer_url = "https://your-oidc-provider.com"
+oidc_client_id = "provenix-client"
+oidc_client_secret = "your-oidc-client-secret"
+
+[security]
+opa_url = "http://localhost:8181"
+enable_policy_enforcement = true
+cors_origins = ["http://localhost:3000", "http://localhost:5173"]
+rate_limit_per_minute = 100

@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+    "corelib",
+    "bom",
+    "attest", 
+    "server",
+    "cli"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Provenix Team"]
+license = "Apache-2.0"
+repository = "https://github.com/your-org/provenix"
+description = "Software supply chain security and provenance platform"

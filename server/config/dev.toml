@@ -1,0 +1,16 @@
+[server]
+host = "0.0.0.0" 
+port = 8080
+
+[database]
+url = "postgresql://provenix:devpassword@localhost:5432/provenix_dev"
+max_connections = 5
+
+[auth]
+jwt_secret = "dev-secret-key-not-for-production-use-only"
+oidc_issuer_url = "https://dev-auth.provenix.local"
+
+[security]
+opa_url = "http://localhost:8181"
+enable_policy_enforcement = false
+rate_limit_per_minute = 1000

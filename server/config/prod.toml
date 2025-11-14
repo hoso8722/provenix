@@ -1,0 +1,21 @@
+[server]
+host = "0.0.0.0"
+port = 443
+workers = 8
+
+[database]
+url = "postgresql://provenix:${POSTGRES_PASSWORD}@postgres.internal:5432/provenix_prod"
+max_connections = 50
+timeout = 10
+
+[auth]
+jwt_secret = "${JWT_SECRET}"
+oidc_issuer_url = "${OIDC_ISSUER_URL}"
+oidc_client_id = "${OIDC_CLIENT_ID}"
+oidc_client_secret = "${OIDC_CLIENT_SECRET}"
+
+[security]
+opa_url = "http://opa.internal:8181"
+enable_policy_enforcement = true
+cors_origins = ["https://app.provenix.com"]
+rate_limit_per_minute = 60

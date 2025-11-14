@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/corelib",
+    "crates/bom",
+    "crates/attest",
+    "crates/cli",
+    "crates/utils",
+    "server"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Provenix Team"]
+license = "Apache-2.0"
+repository = "https://github.com/your-org/provenix"
+description = "Software supply chain security and provenance platform"
+
+[workspace.dependencies]
+# Common dependencies that can be shared across crates
+clap = "4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+thiserror = "1.0"

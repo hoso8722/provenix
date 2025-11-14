@@ -1,0 +1,17 @@
+[package]
+name = "provenix-bom"
+version = "0.1.0"
+edition = "2021"
+description = "SBOM related tools for Provenix (pxb)"
+
+[[bin]]
+name = "pxb"
+path = "src/main.rs"
+
+[lib]
+name = "provenix_bom"
+path = "src/lib.rs"
+
+[dependencies]
+provenix-corelib = { path = "../corelib" }
+provenix-utils = { path = "../utils" }
