@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/corelib",
-    "crates/bom",
+    "crates/sbom",
     "crates/attest",
     "crates/cli",
     "crates/utils",

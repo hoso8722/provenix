@@ -5,24 +5,25 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
-use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct UploadSbomRequest {
     pub format: String,
-    pub data: Value,
     pub project: String,
     pub version: String,
+    #[allow(dead_code)]
+    pub data: Value,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListSbomsQuery {
-    pub project: Option<String>,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
+    #[allow(dead_code)]
+    pub project: Option<String>,
 }
 
 pub fn routes() -> Router<crate::AppState> {
@@ -34,7 +35,7 @@ pub fn routes() -> Router<crate::AppState> {
 }
 
 async fn upload_sbom(
-    State(app_state): State<crate::AppState>,
+    State(_app_state): State<crate::AppState>,
     Json(request): Json<UploadSbomRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     // TODO: Integrate with actual storage

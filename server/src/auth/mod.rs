@@ -1,15 +1,12 @@
 use axum::{
-    extract::{Request, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
-    middleware::Next,
-    response::Response,
     routing::{get, post},
     Router, Json,
 };
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct AuthState {
@@ -58,30 +55,6 @@ impl AuthState {
         let token_data = decode::<Claims>(token, &key, &validation)?;
         Ok(token_data.claims)
     }
-}
-
-pub async fn auth_middleware(
-    State(auth_state): State<crate::AppState>,
-    mut req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let auth_header = req
-        .headers()
-        .get("authorization")
-        .and_then(|header| header.to_str().ok())
-        .and_then(|header| header.strip_prefix("Bearer "));
-
-    let token = auth_header.ok_or(StatusCode::UNAUTHORIZED)?;
-    
-    let claims = auth_state
-        .auth
-        .validate_token(token)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
-    // Add claims to request extensions for use in handlers
-    req.extensions_mut().insert(claims);
-    
-    Ok(next.run(req).await)
 }
 
 pub fn routes() -> Router<crate::AppState> {

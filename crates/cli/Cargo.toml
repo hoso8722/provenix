@@ -10,6 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 provenix-corelib = { path = "../corelib" }
-provenix-bom = { path = "../bom" }
+provenix-sbom = { path = "../sbom" }
 provenix-attest = { path = "../attest" }
 provenix-utils = { path = "../utils" }

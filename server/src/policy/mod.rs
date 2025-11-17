@@ -1,9 +1,10 @@
+#![allow(dead_code)]
+
 use axum::{
     extract::{Request, State},
     http::StatusCode,
     middleware::Next,
     response::Response,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -87,8 +88,8 @@ impl OpaClient {
 }
 
 pub async fn policy_enforcement_middleware(
-    State(app_state): State<crate::AppState>,
-    mut req: Request,
+    State(_app_state): State<crate::AppState>,
+    req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Extract claims from request (set by auth middleware)

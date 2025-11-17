@@ -1,3 +1,3 @@
-pub mod bom {
+pub mod sbom {
     //! SBOM related functionality
 }

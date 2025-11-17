@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -13,13 +13,16 @@ use uuid::Uuid;
 pub struct CreateAttestationRequest {
     pub subject_id: Uuid,
     pub attestation_type: String,
+    #[allow(dead_code)]
     pub signature: String,
+    #[allow(dead_code)]
     pub certificate: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct VerifyAttestationRequest {
     pub attestation_id: Uuid,
+    #[allow(dead_code)]
     pub public_key: String,
 }
 
@@ -32,7 +35,7 @@ pub fn routes() -> Router<crate::AppState> {
 }
 
 async fn create_attestation(
-    State(app_state): State<crate::AppState>,
+    State(_app_state): State<crate::AppState>,
     Json(request): Json<CreateAttestationRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let attestation_id = Uuid::new_v4();

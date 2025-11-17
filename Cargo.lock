@@ -1540,26 +1540,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "provenix-bom"
-version = "0.1.0"
-dependencies = [
- "provenix-corelib",
- "provenix-utils",
-]
-
-[[package]]
 name = "provenix-cli"
 version = "0.1.0"
 dependencies = [
  "provenix-attest",
- "provenix-bom",
  "provenix-corelib",
+ "provenix-sbom",
  "provenix-utils",
 ]
 
 [[package]]
 name = "provenix-corelib"
 version = "0.1.0"
+
+[[package]]
+name = "provenix-sbom"
+version = "0.1.0"
+dependencies = [
+ "provenix-corelib",
+ "provenix-utils",
+]
 
 [[package]]
 name = "provenix-server"

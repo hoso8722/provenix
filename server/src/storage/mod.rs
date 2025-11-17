@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sqlx::{PgPool};
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};

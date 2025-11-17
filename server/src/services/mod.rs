@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::storage::{SbomRecord, AttestationRecord, DatabaseManager};
 use uuid::Uuid;
 use chrono::Utc;
@@ -99,7 +101,7 @@ impl AttestationService {
         Ok(attestations)
     }
 
-    pub async fn verify_attestation(&self, attestation_id: Uuid, public_key: &str) -> Result<bool> {
+    pub async fn verify_attestation(&self, _attestation_id: Uuid, _public_key: &str) -> Result<bool> {
         // TODO: Implement cryptographic verification
         // This is a placeholder implementation
         Ok(true)

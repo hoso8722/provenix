@@ -1,5 +1,5 @@
 [package]
-name = "provenix-bom"
+name = "provenix-sbom"
 version = "0.1.0"
 edition = "2021"
 description = "SBOM related tools for Provenix (pxb)"
@@ -9,7 +9,7 @@ name = "pxb"
 path = "src/main.rs"
 
 [lib]
-name = "provenix_bom"
+name = "provenix_sbom"
 path = "src/lib.rs"
 
 [dependencies]
