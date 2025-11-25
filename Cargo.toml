@@ -1,12 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/corelib",
-    "crates/sbom",
-    "crates/attest",
-    "crates/cli",
-    "crates/utils",
-    "server"
+    "crates/provenix-cli",
+    "crates/provenix-core",
+    "crates/provenix-sbom",
+    "crates/provenix-attest",
+    "crates/provenix-sign",
+    "crates/provenix-verify",
+    "crates/provenix-plugin",
+    "crates/provenix-utils",
+    "server",
 ]
 
 [workspace.package]
@@ -14,14 +17,14 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Provenix Team"]
 license = "Apache-2.0"
-repository = "https://github.com/your-org/provenix"
+repository = "https://github.com/hoso8722/provenix"
 description = "Software supply chain security and provenance platform"
 
 [workspace.dependencies]
-# Common dependencies that can be shared across crates
-clap = "4.0"
+anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-anyhow = "1.0"
+tokio = { version = "1.28", features = ["rt-multi-thread", "macros"] }
+log = "0.4"
 thiserror = "1.0"
+clap = { version = "4.0", features = ["derive"] }

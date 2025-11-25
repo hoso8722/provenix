@@ -1,0 +1,30 @@
+[package]
+name = "provenix-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "provenix-cli"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+clap = { workspace = true }
+env_logger = "0.11"
+
+# Internal dependencies
+provenix-core = { path = "../provenix-core" }
+provenix-plugin = { path = "../provenix-plugin" }
+provenix-sbom = { path = "../provenix-sbom" }
+provenix-attest = { path = "../provenix-attest" }
+provenix-sign = { path = "../provenix-sign" }
+provenix-verify = { path = "../provenix-verify" }
+provenix-utils = { path = "../provenix-utils" }
+
+# crate-specific deps
+[target.'cfg(unix)'.dependencies]
+# add platform specific if needed

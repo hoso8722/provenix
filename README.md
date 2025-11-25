@@ -56,6 +56,7 @@ cd provenix
 Provenix implements a zero-trust architecture with the following components:
 
 ### Core Libraries (`crates/`)
+
 - **`provenix-corelib`** - Domain-driven design core with security primitives
 - **`provenix-utils`** - Secure utilities for logging, config, and error handling
 - **`provenix-bom`** - SBOM generation with supply chain analysis
@@ -63,6 +64,7 @@ Provenix implements a zero-trust architecture with the following components:
 - **`provenix-cli`** - Zero-trust CLI with secure credential management
 
 ### Enterprise Server (`server/`)
+
 - **Authentication**: OIDC integration with MFA enforcement
 - **Authorization**: Policy engine with OPA for dynamic access control
 - **Storage**: Encrypted data with immutable audit trails
@@ -70,11 +72,13 @@ Provenix implements a zero-trust architecture with the following components:
 - **API**: RESTful and gRPC APIs with comprehensive security
 
 ### Infrastructure (`infra/`)
+
 - **Docker**: Multi-stage builds with security scanning
 - **Kubernetes**: Production-ready deployments with network policies
 - **Terraform**: Infrastructure as Code with security baselines
 
 ### Security Features
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Zero-Trust Security                      │
@@ -86,8 +90,13 @@ Provenix implements a zero-trust architecture with the following components:
 
 ## Documentation
 
-- [🏗️ Architecture Overview](docs/ARCHITECTURE.md) - Zero-trust system design
-- [🛡️ Security Model](docs/SECURITY_MODEL.md) - Comprehensive security framework  
+📚 **完全ドキュメント**
+
+- [📖 プロジェクト全体像](docs/PROJECT_OVERVIEW.md) - **まずはここから！** プロジェクトの全体像を理解
+- [⚡ クイックリファレンス](docs/QUICK_REFERENCE.md) - **よく使うコマンドと Tips**
+- [🔧 技術仕様書](docs/TECHNICAL_SPECIFICATION.md) - 詳細な技術設計とデータフロー
+- [🏗️ Architecture Overview](docs/architecture.md) - Zero-trust system design
+- [🛡️ Security Model](docs/SECURITY_MODEL.md) - Comprehensive security framework
 - [🚀 Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Production deployment strategies
 - [📖 CLI Usage Guide](docs/cli.md) - Command-line interface documentation
 - [🔌 API Reference](docs/api.md) - REST API specifications
@@ -139,7 +148,7 @@ PROVENIX_ENV=dev cargo run --bin pxs
 provenix/
 ├── crates/                   # Rust libraries
 │   ├── corelib/             # Domain core (DDD)
-│   ├── utils/               # Common utilities 
+│   ├── utils/               # Common utilities
 │   ├── bom/                 # SBOM generation (pxb)
 │   ├── attest/              # Attestation tools (pxa)
 │   └── cli/                 # Main CLI (px)
@@ -177,6 +186,7 @@ provenix/
 ## Security & Compliance
 
 ### Security Features
+
 - **Zero Trust Network Architecture (ZTNA)**
 - **Hardware Security Module (HSM) integration**
 - **Multi-factor authentication (MFA)**
@@ -187,6 +197,7 @@ provenix/
 - **Container image signing and verification**
 
 ### Compliance Standards
+
 - **SOC 2 Type II** controls implementation
 - **NIST Cybersecurity Framework** alignment
 - **SLSA (Supply-chain Levels for Software Artifacts)** compliance
@@ -198,7 +209,9 @@ provenix/
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ### Security Contributions
+
 For security-related contributions:
+
 1. Follow responsible disclosure practices
 2. Submit security issues via private channels
 3. Include proof-of-concept only after fixes are available

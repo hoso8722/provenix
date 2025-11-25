@@ -1,0 +1,32 @@
+[package]
+name = "provenix-verify"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "provenix_verify"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pxv"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+
+# Internal dependencies
+provenix-core = { path = "../provenix-core" }
+provenix-plugin = { path = "../provenix-plugin" }
+provenix-utils = { path = "../provenix-utils" }
+
+# External dependencies
+ctor = "0.2"
+
+# crate-specific deps
+[target.'cfg(unix)'.dependencies]
+# add platform specific if needed
+

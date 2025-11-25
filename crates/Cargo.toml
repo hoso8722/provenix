@@ -1,11 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "corelib",
-    "bom",
-    "attest", 
-    "server",
-    "cli"
+    "provenix-core",
+    "provenix-plugin",
+    "provenix-sbom",
+    "provenix-attest",
+    "provenix-sign",
+    "provenix-verify",
+    "provenix-cli",
+    "provenix-utils",
 ]
 
 [workspace.package]
@@ -15,3 +18,13 @@ authors = ["Provenix Team"]
 license = "Apache-2.0"
 repository = "https://github.com/your-org/provenix"
 description = "Software supply chain security and provenance platform"
+
+[workspace.dependencies]
+# Common dependencies
+anyhow = "1.0"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }
