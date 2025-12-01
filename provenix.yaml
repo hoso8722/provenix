@@ -1,6 +1,6 @@
 {
   "sbom": {
-    "provider": "syft",
+    "provider": "cargo-sbom",
     "target": ".",
     "output": "test-output/sbom.json"
   },

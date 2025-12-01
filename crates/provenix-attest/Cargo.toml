@@ -25,6 +25,8 @@ provenix-utils = { path = "../provenix-utils" }
 
 # External dependencies
 ctor = "0.2"
+sha2 = "0.10"
+chrono = "0.4"
 
 # crate-specific deps
 [target.'cfg(unix)'.dependencies]
