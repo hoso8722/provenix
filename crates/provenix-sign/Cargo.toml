@@ -12,8 +12,14 @@ path = "src/lib.rs"
 name = "pxs"
 path = "src/main.rs"
 
+[[bin]]
+name = "provenix-keygen"
+path = "src/keygen.rs"
+
 [dependencies]
 anyhow = { workspace = true }
+clap = { workspace = true }
+env_logger = "0.11"
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
@@ -25,6 +31,11 @@ provenix-utils = { path = "../provenix-utils" }
 
 # External dependencies
 ctor = "0.2"
+
+# Phase 2: Cryptographic signing
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand = "0.8"
+base64 = "0.22"
 
 # crate-specific deps
 [target.'cfg(unix)'.dependencies]

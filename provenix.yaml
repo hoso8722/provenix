@@ -1,26 +1,28 @@
 {
-  "sbom": {
-    "provider": "cargo-sbom",
-    "target": ".",
-    "output": "test-output/sbom.json"
-  },
-  "attest": {
-    "provider": "in-toto",
-    "sbom_path": "test-output/sbom.json",
-    "output": "test-output/attestation.json"
-  },
-  "sign": {
-    "provider": "cosign",
-    "artifact_path": "test-output/sbom.json",
-    "key_path": "test-key.pem",
-    "output": "test-output/signature.sig"
-  },
-  "verify": {
-    "provider": "sigstore",
-    "artifact_path": "test-output/sbom.json",
-    "signature_path": "test-output/signature.sig"
-  },
-  "publish": {
-    "registry_url": "https://registry.example.com"
-  }
+  "sbom":
+    {
+      "provider": "cargo-sbom",
+      "target": ".",
+      "output": "test-output/sbom.json",
+    },
+  "attest":
+    {
+      "provider": "in-toto",
+      "sbom_path": "test-output/sbom.json",
+      "output": "test-output/attestation.json",
+    },
+  "sign":
+    {
+      "provider": "ed25519",
+      "artifact_path": "test-output/attestation.json",
+      "key_path": "test-output/keys/private.key",
+      "output": "test-output/signed-attestation.json",
+    },
+  "verify":
+    {
+      "provider": "ed25519",
+      "artifact_path": "test-output/sbom.json",
+      "signature_path": "test-output/signed-attestation.json",
+    },
+  "publish": { "registry_url": "https://registry.example.com" },
 }

@@ -26,7 +26,11 @@ provenix-utils = { path = "../provenix-utils" }
 # External dependencies
 ctor = "0.2"
 
+# Phase 2: Cryptographic verification
+ed25519-dalek = "2.1"
+base64 = "0.22"
+sha2 = "0.10"
+
 # crate-specific deps
 [target.'cfg(unix)'.dependencies]
 # add platform specific if needed
-
