@@ -1,14 +1,24 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use provenix_plugin::SignProvider;
+use provenix_utils::rekor::RekorClient;
 use rand::rngs::OsRng;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
 
 // ===== Phase 2: Ed25519 Signing Provider =====
+// ===== Phase 3: Rekor Transparency Log Integration =====
 
-pub struct Ed25519Provider;
+pub struct Ed25519Provider {
+    pub rekor_url: Option<String>,
+}
+
+impl Ed25519Provider {
+    pub fn new(rekor_url: Option<String>) -> Self {
+        Self { rekor_url }
+    }
+}
 
 impl SignProvider for Ed25519Provider {
     fn name(&self) -> &str {
@@ -48,18 +58,77 @@ impl SignProvider for Ed25519Provider {
 
         // 7. Write signed envelope
         let envelope_json = serde_json::to_string_pretty(&signed_envelope)?;
-        fs::write(output, envelope_json)?;
+        fs::write(output, &envelope_json)?;
 
         log::info!("Signed envelope created at: {:?}", output);
 
-        Ok(json!({
+        let mut result = json!({
             "provider": "ed25519",
             "algorithm": "Ed25519",
             "output": output.to_string_lossy(),
             "signature_length": signature.to_bytes().len(),
             "format": "in-toto DSSE"
-        }))
+        });
+
+        // 8. Upload to Rekor (Phase 3 - Transparency Log)
+        if let Some(rekor_url) = &self.rekor_url {
+            log::info!("Uploading to Rekor transparency log: {}", rekor_url);
+
+            match upload_to_rekor(rekor_url, &signed_envelope, &signing_key) {
+                Ok(rekor_metadata) => {
+                    log::info!(
+                        "Successfully uploaded to Rekor: UUID={}",
+                        rekor_metadata["uuid"].as_str().unwrap_or("unknown")
+                    );
+                    result["rekor"] = rekor_metadata;
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to upload to Rekor (continuing without transparency log): {}",
+                        e
+                    );
+                    result["rekor_error"] = json!(e.to_string());
+                }
+            }
+        } else {
+            log::debug!("Rekor upload disabled (no URL configured)");
+        }
+
+        Ok(result)
     }
+}
+
+/// Upload signed envelope to Rekor transparency log
+fn upload_to_rekor(
+    rekor_url: &str,
+    signed_envelope: &Value,
+    signing_key: &SigningKey,
+) -> anyhow::Result<Value> {
+    use provenix_utils::rekor::RekorClient;
+
+    // Extract public key from signing key
+    let public_key = signing_key.verifying_key().to_bytes();
+
+    // Create async runtime for Rekor upload
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create async runtime: {}", e))?;
+
+    runtime.block_on(async {
+        let client = RekorClient::new(Some(rekor_url));
+
+        // Upload DSSE envelope to Rekor
+        let (uuid, log_index) = client
+            .upload_dsse(signed_envelope, &public_key)
+            .await
+            .map_err(|e| anyhow::anyhow!("Rekor upload failed: {}", e))?;
+
+        Ok(json!({
+            "uuid": uuid,
+            "log_index": log_index,
+            "location": format!("{}/api/v1/log/entries/{}", rekor_url, uuid),
+            "rekor_url": rekor_url
+        }))
+    })
 }
 
 /// Load private key from file or generate new one
@@ -183,5 +252,7 @@ pub fn save_keypair(
 
 #[ctor::ctor]
 fn register() {
-    let _ = provenix_core::registry::register_sign("ed25519", Ed25519Provider);
+    // Register Ed25519 provider with default configuration (no Rekor)
+    // Rekor URL should be configured via provider instantiation
+    let _ = provenix_core::registry::register_sign("ed25519", Ed25519Provider::new(None));
 }

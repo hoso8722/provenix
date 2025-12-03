@@ -2082,13 +2082,16 @@ dependencies = [
  "ctor",
  "ed25519-dalek",
  "env_logger",
+ "hex",
  "log",
  "provenix-core",
  "provenix-plugin",
  "provenix-utils",
  "rand",
+ "reqwest",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2096,9 +2099,13 @@ name = "provenix-utils"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "log",
+ "reqwest",
  "serde",
  "serde_json",
+ "sha2",
+ "tokio",
 ]
 
 [[package]]
@@ -2109,13 +2116,16 @@ dependencies = [
  "base64 0.22.1",
  "ctor",
  "ed25519-dalek",
+ "hex",
  "log",
  "provenix-core",
  "provenix-plugin",
  "provenix-utils",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",
+ "tokio",
 ]
 
 [[package]]

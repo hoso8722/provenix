@@ -7,8 +7,17 @@ use std::fs;
 use std::path::PathBuf;
 
 // ===== Phase 2: Ed25519 Verification Provider =====
+// ===== Phase 3: Rekor Transparency Log Integration =====
 
-pub struct Ed25519Provider;
+pub struct Ed25519Provider {
+    pub check_rekor: bool,
+}
+
+impl Ed25519Provider {
+    pub fn new(check_rekor: bool) -> Self {
+        Self { check_rekor }
+    }
+}
 
 impl VerifyProvider for Ed25519Provider {
     fn name(&self) -> &str {
@@ -118,12 +127,39 @@ impl VerifyProvider for Ed25519Provider {
             .as_str()
             .unwrap_or("unknown");
 
+        // 8. Verify Rekor transparency log (Phase 3)
+        let mut rekor_verified = false;
+        let mut rekor_metadata = json!(null);
+
+        if self.check_rekor {
+            if let Some(rekor_url) = _rekor_url {
+                log::info!("Checking Rekor transparency log: {}", rekor_url);
+
+                match verify_rekor_entry(rekor_url, &envelope, sbom_hash) {
+                    Ok(metadata) => {
+                        log::info!("✅ Rekor transparency log verification passed");
+                        rekor_verified = true;
+                        rekor_metadata = metadata;
+                    }
+                    Err(e) => {
+                        log::warn!("Rekor verification failed (continuing): {}", e);
+                    }
+                }
+            } else {
+                log::debug!("Rekor check requested but no URL provided");
+            }
+        } else {
+            log::debug!("Rekor verification disabled");
+        }
+
         Ok(json!({
             "valid": true,
             "provider": "ed25519",
             "algorithm": "Ed25519",
             "hash_chain_valid": hash_valid,
             "signature_valid": true,
+            "rekor_verified": rekor_verified,
+            "rekor": rekor_metadata,
             "subject": subject_name,
             "sbom_hash": sbom_hash,
             "timestamp": timestamp,
@@ -231,7 +267,59 @@ fn load_public_key_from_file(key_path: &str) -> anyhow::Result<VerifyingKey> {
     VerifyingKey::from_bytes(&key_array).map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))
 }
 
+/// Verify entry exists in Rekor transparency log
+/// Phase 3: Rekor Integration
+fn verify_rekor_entry(
+    rekor_url: &str,
+    _envelope: &Value,
+    sbom_hash: &str,
+) -> anyhow::Result<Value> {
+    use provenix_utils::rekor::RekorClient;
+
+    // Create async runtime for Rekor API calls
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create async runtime: {}", e))?;
+
+    runtime.block_on(async {
+        let client = RekorClient::new(Some(rekor_url));
+
+        // Try to search by artifact hash
+        let entries = client
+            .search_by_hash(sbom_hash)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to search Rekor: {}", e))?;
+
+        if entries.is_empty() {
+            return Err(anyhow::anyhow!(
+                "No Rekor entry found for artifact hash: {}",
+                sbom_hash
+            ));
+        }
+
+        // Get the first matching entry
+        let uuid = &entries[0];
+        let entry = client
+            .get_entry(uuid)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch Rekor entry: {}", e))?;
+
+        log::info!(
+            "Found Rekor entry: UUID={}, logIndex={}",
+            entry.uuid,
+            entry.log_index
+        );
+
+        Ok(json!({
+            "uuid": entry.uuid,
+            "log_index": entry.log_index,
+            "integrated_time": entry.integrated_time,
+            "location": format!("{}/api/v1/log/entries/{}", rekor_url, entry.uuid),
+        }))
+    })
+}
+
 #[ctor::ctor]
 fn register() {
-    let _ = provenix_core::registry::register_verify("ed25519", Ed25519Provider);
+    // Register Ed25519 provider with default configuration (no Rekor check)
+    let _ = provenix_core::registry::register_verify("ed25519", Ed25519Provider::new(false));
 }
