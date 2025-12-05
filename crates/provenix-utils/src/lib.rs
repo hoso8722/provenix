@@ -1,3 +1,4 @@
+pub mod fulcio;
 pub mod rekor;
 pub mod tool_manager;
 

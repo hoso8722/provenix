@@ -23,6 +23,7 @@ provenix-sbom = { path = "../provenix-sbom" }
 provenix-attest = { path = "../provenix-attest" }
 provenix-sign = { path = "../provenix-sign" }
 provenix-verify = { path = "../provenix-verify" }
+provenix-keyless = { path = "../keyless" }
 provenix-utils = { path = "../provenix-utils" }
 
 # crate-specific deps

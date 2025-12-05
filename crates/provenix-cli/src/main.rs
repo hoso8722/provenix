@@ -6,6 +6,7 @@ mod executor;
 
 // Import provider crates to trigger their registration
 extern crate provenix_attest;
+extern crate provenix_keyless;
 extern crate provenix_sbom;
 extern crate provenix_sign;
 extern crate provenix_verify;

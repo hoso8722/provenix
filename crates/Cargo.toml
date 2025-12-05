@@ -9,6 +9,7 @@ members = [
     "provenix-verify",
     "provenix-cli",
     "provenix-utils",
+    "keyless",
 ]
 
 [workspace.package]
