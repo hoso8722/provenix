@@ -2,6 +2,8 @@ pub mod pipeline;
 pub mod config;
 pub mod errors;
 pub mod registry;
+pub mod signature_format;
+pub mod cosign_adapter;
 
 // re-export commonly used types
 pub use config::Config;

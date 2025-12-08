@@ -12,6 +12,11 @@ log = { workspace = true }
 thiserror = { workspace = true }
 once_cell = "1.19"
 
+# Phase 5: Signature format conversion
+base64 = "0.22"
+lazy_static = "1.4"
+ctor = "0.2"
+
 # Internal dependencies
 provenix-plugin = { path = "../provenix-plugin" }
 

@@ -33,6 +33,12 @@ pub struct SignConfig {
     pub artifact_path: String,
     pub key_path: String,
     pub output: String,
+    #[serde(default = "default_format")]
+    pub format: String, // "dsse" or "cosign"
+}
+
+fn default_format() -> String {
+    "dsse".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +46,12 @@ pub struct VerifyConfig {
     pub provider: String,
     pub artifact_path: String,
     pub signature_path: String,
+    #[serde(default = "default_verify_format")]
+    pub format: String, // "dsse", "cosign", or "auto"
+}
+
+fn default_verify_format() -> String {
+    "auto".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,11 +89,13 @@ impl Default for Config {
                 artifact_path: "artifact".to_string(),
                 key_path: "key.pem".to_string(),
                 output: "signature.sig".to_string(),
+                format: "dsse".to_string(),
             },
             verify: VerifyConfig {
                 provider: "sigstore".to_string(),
                 artifact_path: "artifact".to_string(),
                 signature_path: "signature.sig".to_string(),
+                format: "auto".to_string(),
             },
             publish: PublishConfig {
                 registry_url: "https://registry.example.com".to_string(),

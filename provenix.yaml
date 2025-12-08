@@ -14,12 +14,14 @@
     "artifact_path": "test-output-quick/attestation.json",
     "key_path": "test-output-quick/keys/private.key",
     "output": "test-output-quick/signed-attestation.json",
+    "format": "dsse",
     "rekor_url": null
   },
   "verify": {
     "provider": "ed25519",
     "artifact_path": "test-output-quick/sbom.json",
     "signature_path": "test-output-quick/signed-attestation.json",
+    "format": "auto",
     "rekor_url": null,
     "check_rekor": false
   },

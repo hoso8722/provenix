@@ -33,7 +33,10 @@ fn main() -> Result<()> {
     env_logger::init();
 
     let cli = Cli::parse();
-    let cfg = config::Config::load("provenix.yaml")?;
+    
+    // Load config from environment variable or default
+    let config_path = std::env::var("PROVENIX_CONFIG").unwrap_or_else(|_| "provenix.yaml".to_string());
+    let cfg = config::Config::load(&config_path)?;
     match cli.command {
         Commands::Run => executor::pipeline::run_all(&cfg)?,
         Commands::Sbom => executor::sbom::run(&cfg)?,

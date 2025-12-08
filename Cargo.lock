@@ -2103,6 +2103,9 @@ name = "provenix-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
+ "ctor",
+ "lazy_static",
  "log",
  "once_cell",
  "provenix-plugin",

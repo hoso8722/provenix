@@ -1,0 +1,31 @@
+{
+  "sbom": {
+    "provider": "cargo-sbom",
+    "target": ".",
+    "output": "test-output-cosign/sbom.json"
+  },
+  "attest": {
+    "provider": "in-toto",
+    "sbom_path": "test-output-cosign/sbom.json",
+    "output": "test-output-cosign/attestation.json"
+  },
+  "sign": {
+    "provider": "ed25519",
+    "artifact_path": "test-output-cosign/attestation.json",
+    "key_path": "test-output-cosign/keys/private.key",
+    "output": "test-output-cosign/signed-attestation.cosign",
+    "format": "cosign",
+    "rekor_url": null
+  },
+  "verify": {
+    "provider": "ed25519",
+    "artifact_path": "test-output-cosign/sbom.json",
+    "signature_path": "test-output-cosign/signed-attestation.cosign",
+    "format": "cosign",
+    "rekor_url": null,
+    "check_rekor": false
+  },
+  "publish": {
+    "registry_url": "https://registry.example.com"
+  }
+}
