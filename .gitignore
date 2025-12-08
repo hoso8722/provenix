@@ -7,5 +7,6 @@ node_modules/
 dist/
 coverage/
 .idea/
-docs/implementations/*.md
+docs/implementations/*
+docs/descriptions/*
 test-output/

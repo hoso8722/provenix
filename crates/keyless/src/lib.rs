@@ -266,12 +266,54 @@ impl VerifyProvider for KeylessVerifyProvider {
         log::info!("OIDC Issuer: {}", oidc_issuer);
         log::info!("OIDC Subject: {}", oidc_subject);
 
-        // 3. Verify certificate chain (TODO: implement proper X.509 validation)
-        // This requires:
-        // - Parsing X.509 certificates
-        // - Verifying chain up to Fulcio root CA
-        // - Checking certificate extensions (OIDC claims)
-        log::info!("⏭️  Certificate chain verification (not yet implemented)");
+        // 3. Verify certificate chain using Phase 4.1 implementation
+        use provenix_utils::x509;
+
+        let cert_chain = sig_entry["chain"].as_array();
+        let intermediate_pem = cert_chain.and_then(|c| c.first()).and_then(|v| v.as_str());
+
+        // Verify certificate chain
+        x509::verify_certificate_chain(certificate_pem, intermediate_pem)
+            .map_err(|e| anyhow::anyhow!("Certificate chain verification failed: {}", e))?;
+
+        log::info!("✅ Certificate chain verification passed");
+
+        // Parse certificate and extract OIDC info
+        let cert_der = x509::parse_certificate_pem(certificate_pem)
+            .map_err(|e| anyhow::anyhow!("Failed to parse certificate PEM: {}", e))?;
+
+        let cert = x509::parse_certificate_der(&cert_der)
+            .map_err(|e| anyhow::anyhow!("Failed to parse certificate DER: {}", e))?;
+
+        let oidc_info = x509::extract_oidc_info(&cert)
+            .map_err(|e| anyhow::anyhow!("Failed to extract OIDC info from certificate: {}", e))?;
+
+        // Verify OIDC issuer is trusted
+        x509::verify_trusted_issuer(&oidc_info.issuer)
+            .map_err(|e| anyhow::anyhow!("Untrusted OIDC issuer: {}", e))?;
+
+        log::info!("✅ OIDC issuer verified: {}", oidc_info.issuer);
+
+        // Verify OIDC claims match envelope
+        if oidc_info.issuer != oidc_issuer {
+            return Err(anyhow::anyhow!(
+                "OIDC issuer mismatch: certificate='{}', envelope='{}'",
+                oidc_info.issuer,
+                oidc_issuer
+            ));
+        }
+
+        if let Some(ref cert_subject) = oidc_info.subject {
+            if cert_subject != oidc_subject {
+                return Err(anyhow::anyhow!(
+                    "OIDC subject mismatch: certificate='{}', envelope='{}'",
+                    cert_subject,
+                    oidc_subject
+                ));
+            }
+        }
+
+        log::info!("✅ OIDC claims verified");
 
         // 4. Decode payload and signature
         let payload_bytes = BASE64
@@ -282,32 +324,14 @@ impl VerifyProvider for KeylessVerifyProvider {
             .decode(sig_base64)
             .map_err(|e| anyhow::anyhow!("Failed to decode signature: {}", e))?;
 
-        // 5. Extract public key from certificate (TODO: proper X.509 parsing)
-        // For now, use public key from envelope
-        let public_key_base64 = sig_entry["publicKey"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing 'publicKey' in signature entry"))?;
+        // 5. Extract Ed25519 public key from certificate using Phase 4.1
+        let public_key = x509::extract_ed25519_public_key(&cert)
+            .map_err(|e| anyhow::anyhow!("Failed to extract public key from certificate: {}", e))?;
 
-        let public_key_bytes = BASE64
-            .decode(public_key_base64)
-            .map_err(|e| anyhow::anyhow!("Failed to decode public key: {}", e))?;
+        log::info!("✅ Public key extracted from certificate");
 
-        // 6. Verify signature
-        use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-
-        if public_key_bytes.len() != 32 {
-            return Err(anyhow::anyhow!(
-                "Invalid public key size: expected 32 bytes, got {}",
-                public_key_bytes.len()
-            ));
-        }
-
-        let key_array: [u8; 32] = public_key_bytes
-            .try_into()
-            .map_err(|_| anyhow::anyhow!("Failed to convert public key bytes"))?;
-
-        let public_key = VerifyingKey::from_bytes(&key_array)
-            .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?;
+        // 6. Verify signature using certificate public key
+        use ed25519_dalek::{Signature, Verifier};
 
         let signature_obj = Signature::from_bytes(
             &sig_bytes
@@ -332,17 +356,37 @@ impl VerifyProvider for KeylessVerifyProvider {
             .as_str()
             .unwrap_or("unknown");
 
-        Ok(json!({
+        let mut result = json!({
             "valid": true,
             "provider": "fulcio-keyless",
             "algorithm": "Ed25519",
             "signature_valid": true,
-            "certificate_valid": true, // TODO: implement proper validation
-            "oidc_issuer": oidc_issuer,
-            "oidc_subject": oidc_subject,
+            "certificate_valid": true,
+            "certificate_chain_verified": true,
+            "oidc_issuer": oidc_info.issuer,
+            "oidc_subject": oidc_info.subject,
             "subject": subject_name,
             "sbom_hash": sbom_hash,
-        }))
+        });
+
+        // Add GitHub-specific OIDC information if present
+        if let Some(ref repo) = oidc_info.github_repository {
+            result["github_repository"] = json!(repo);
+        }
+        if let Some(ref workflow) = oidc_info.github_workflow {
+            result["github_workflow"] = json!(workflow);
+        }
+        if let Some(ref sha) = oidc_info.github_sha {
+            result["github_sha"] = json!(sha);
+        }
+        if let Some(ref event) = oidc_info.github_event_name {
+            result["github_event"] = json!(event);
+        }
+        if let Some(ref ref_str) = oidc_info.github_ref {
+            result["github_ref"] = json!(ref_str);
+        }
+
+        Ok(result)
     }
 }
 

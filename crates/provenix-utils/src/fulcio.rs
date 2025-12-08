@@ -152,37 +152,50 @@ impl FulcioClient {
             .certificates)
     }
 
-    /// Verify OIDC token (basic validation)
+    /// Verify OIDC token with full JWT signature verification (Phase 4.2)
     ///
-    /// Note: Full OIDC validation requires fetching issuer's JWKS and verifying JWT signature.
-    /// This is a simplified version for demonstration.
+    /// This performs complete JWT verification including:
+    /// - Fetching OIDC configuration
+    /// - Fetching JWKS (with caching)
+    /// - Verifying JWT signature with public key
+    /// - Validating JWT claims (exp, iat, iss, aud)
     pub async fn verify_oidc_token(&self, token: &str) -> Result<OidcIdentity> {
-        // Parse JWT (simplified - production should use proper JWT library)
+        use crate::jwt::JwtVerifier;
+
+        // First, do a quick parse to get the issuer
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
             return Err(anyhow::anyhow!("Invalid JWT format"));
         }
 
-        // Decode payload (base64url)
+        // Decode payload (base64url) to get issuer
         let payload_json = BASE64.decode(parts[1])?;
         let payload: Value = serde_json::from_slice(&payload_json)?;
 
         let issuer = payload["iss"]
             .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing 'iss' claim"))?
-            .to_string();
+            .ok_or_else(|| anyhow::anyhow!("Missing 'iss' claim"))?;
 
-        let subject = payload["sub"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing 'sub' claim"))?
-            .to_string();
+        log::info!("Verifying JWT from issuer: {}", issuer);
 
-        log::info!("OIDC Identity: issuer={}, subject={}", issuer, subject);
+        // Phase 4.2: Full JWT verification with JWKS
+        let verifier = JwtVerifier::new();
+        let claims = verifier
+            .verify_jwt(token, issuer)
+            .await
+            .map_err(|e| anyhow::anyhow!("JWT verification failed: {}", e))?;
+
+        log::info!("✅ JWT signature verified");
+        log::info!(
+            "OIDC Identity: issuer={}, subject={}",
+            claims.iss,
+            claims.sub
+        );
 
         Ok(OidcIdentity {
             token: token.to_string(),
-            issuer,
-            subject,
+            issuer: claims.iss,
+            subject: claims.sub,
         })
     }
 
