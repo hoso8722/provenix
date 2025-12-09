@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+default = ["x509"]
+x509 = []
+
 [lib]
 name = "provenix_verify"
 path = "src/lib.rs"

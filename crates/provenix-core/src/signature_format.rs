@@ -2,7 +2,6 @@
 ///
 /// This module provides the SignatureFormat trait for signature format conversion
 /// between different signature envelope formats (DSSE, Cosign SimpleSigning, etc.)
-
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -38,6 +37,8 @@ pub struct DsseEnvelope {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DsseSignature {
     pub sig: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "publicKey")]
+    pub public_key: Option<String>, // base64-encoded public key
     #[serde(skip_serializing_if = "Option::is_none")]
     pub certificate: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -164,6 +165,7 @@ mod tests {
             payload: "eyJzb21lIjogImRhdGEifQ==".to_string(),
             signatures: vec![DsseSignature {
                 sig: "signature_here".to_string(),
+                public_key: None,
                 certificate: None,
                 chain: None,
                 oidc_issuer: None,

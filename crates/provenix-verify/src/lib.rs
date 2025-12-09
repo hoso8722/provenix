@@ -59,10 +59,6 @@ impl VerifyProvider for Ed25519Provider {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing 'sig' in signature entry"))?;
 
-        let public_key_base64 = sig_entry["publicKey"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing 'publicKey' in signature entry"))?;
-
         // 3. Decode payload and signature
         let payload_bytes = BASE64
             .decode(payload_base64)
@@ -85,24 +81,54 @@ impl VerifyProvider for Ed25519Provider {
         }
         log::info!("✅ Hash chain verification passed");
 
-        // 6. Load public key from DSSE envelope
-        let public_key_bytes = BASE64
-            .decode(public_key_base64)
-            .map_err(|e| anyhow::anyhow!("Failed to decode public key: {}", e))?;
+        // 6. Load public key - try publicKey field first, then certificate
+        let public_key = if let Some(public_key_base64) = sig_entry["publicKey"].as_str() {
+            // Standard DSSE format with embedded public key
+            log::debug!("Using public key from 'publicKey' field");
+            let public_key_bytes = BASE64
+                .decode(public_key_base64)
+                .map_err(|e| anyhow::anyhow!("Failed to decode public key: {}", e))?;
 
-        if public_key_bytes.len() != 32 {
+            if public_key_bytes.len() != 32 {
+                return Err(anyhow::anyhow!(
+                    "Invalid public key size: expected 32 bytes, got {}",
+                    public_key_bytes.len()
+                ));
+            }
+
+            let key_array: [u8; 32] = public_key_bytes
+                .try_into()
+                .map_err(|_| anyhow::anyhow!("Failed to convert public key bytes"))?;
+
+            VerifyingKey::from_bytes(&key_array)
+                .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?
+        } else if let Some(cert_pem) = sig_entry["certificate"].as_str() {
+            // Cosign/Fulcio format with certificate
+            log::debug!("Extracting public key from certificate");
+            
+            #[cfg(feature = "x509")]
+            {
+                use provenix_utils::x509;
+                let cert_der = x509::parse_certificate_pem(cert_pem)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse certificate: {}", e))?;
+                let cert = x509::parse_certificate_der(&cert_der)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse certificate DER: {}", e))?;
+                x509::extract_ed25519_public_key(&cert)
+                    .map_err(|e| anyhow::anyhow!("Failed to extract public key from certificate: {}", e))?
+            }
+            #[cfg(not(feature = "x509"))]
+            {
+                return Err(anyhow::anyhow!(
+                    "Certificate-based verification requires 'x509' feature. \
+                    Signature is missing 'publicKey' field and contains certificate instead."
+                ));
+            }
+        } else {
             return Err(anyhow::anyhow!(
-                "Invalid public key size: expected 32 bytes, got {}",
-                public_key_bytes.len()
+                "Missing both 'publicKey' and 'certificate' in signature entry. \
+                Cannot verify signature without public key."
             ));
-        }
-
-        let key_array: [u8; 32] = public_key_bytes
-            .try_into()
-            .map_err(|_| anyhow::anyhow!("Failed to convert public key bytes"))?;
-
-        let public_key = VerifyingKey::from_bytes(&key_array)
-            .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?;
+        };
 
         let signature_obj = Signature::from_bytes(
             &sig_bytes

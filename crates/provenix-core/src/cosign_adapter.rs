@@ -6,7 +6,6 @@
 /// References:
 /// - Cosign SimpleSigning: https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md
 /// - In-toto Statement: https://github.com/in-toto/attestation/blob/main/spec/README.md
-
 use super::signature_format::{DsseEnvelope, DsseSignature, SignatureFormat};
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -74,6 +73,21 @@ impl SignatureFormat for CosignAdapter {
             .ok_or_else(|| anyhow!("No signatures in DSSE envelope"))?;
 
         // Create Cosign SimpleSigning envelope
+        let mut optional = json!({
+            "Signature": sig_entry.sig,
+            "Certificate": sig_entry.certificate,
+            "Chain": sig_entry.chain,
+            "Issuer": sig_entry.oidc_issuer,
+            "Subject": sig_entry.oidc_subject
+        });
+
+        // Include publicKey if present in DSSE (for non-certificate based signatures)
+        if let Ok(dsse_json) = serde_json::to_value(dsse) {
+            if let Some(pk) = dsse_json["signatures"][0]["publicKey"].as_str() {
+                optional["PublicKey"] = json!(pk);
+            }
+        }
+
         let cosign_envelope = json!({
             "critical": {
                 "identity": {
@@ -84,13 +98,7 @@ impl SignatureFormat for CosignAdapter {
                 },
                 "type": "cosign container image signature"
             },
-            "optional": {
-                "Signature": sig_entry.sig,
-                "Certificate": sig_entry.certificate,
-                "Chain": sig_entry.chain,
-                "Issuer": sig_entry.oidc_issuer,
-                "Subject": sig_entry.oidc_subject
-            }
+            "optional": optional
         });
 
         log::debug!("Converted DSSE to Cosign format");
@@ -112,7 +120,10 @@ impl SignatureFormat for CosignAdapter {
             .to_string();
 
         // Extract optional fields
-        let certificate = optional.get("Certificate").and_then(|v| v.as_str()).map(String::from);
+        let certificate = optional
+            .get("Certificate")
+            .and_then(|v| v.as_str())
+            .map(String::from);
 
         let chain = optional.get("Chain").and_then(|v| v.as_array()).map(|arr| {
             arr.iter()
@@ -121,9 +132,21 @@ impl SignatureFormat for CosignAdapter {
                 .collect()
         });
 
-        let oidc_issuer = optional.get("Issuer").and_then(|v| v.as_str()).map(String::from);
+        let oidc_issuer = optional
+            .get("Issuer")
+            .and_then(|v| v.as_str())
+            .map(String::from);
 
-        let oidc_subject = optional.get("Subject").and_then(|v| v.as_str()).map(String::from);
+        let oidc_subject = optional
+            .get("Subject")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        // Extract public key if present (for non-certificate based signatures)
+        let public_key = optional
+            .get("PublicKey")
+            .and_then(|v| v.as_str())
+            .map(String::from);
 
         // Extract critical section to reconstruct attestation
         let critical = cosign_payload
@@ -138,7 +161,9 @@ impl SignatureFormat for CosignAdapter {
             .ok_or_else(|| anyhow!("Missing 'docker-manifest-digest' in critical section"))?;
 
         // Remove "sha256:" prefix if present
-        let digest = manifest_digest.strip_prefix("sha256:").unwrap_or(manifest_digest);
+        let digest = manifest_digest
+            .strip_prefix("sha256:")
+            .unwrap_or(manifest_digest);
 
         // Reconstruct in-toto attestation
         let attestation = json!({
@@ -178,6 +203,7 @@ impl SignatureFormat for CosignAdapter {
             payload: payload_base64,
             signatures: vec![DsseSignature {
                 sig: signature,
+                public_key,
                 certificate,
                 chain,
                 oidc_issuer,
@@ -260,6 +286,7 @@ mod tests {
             payload: payload_base64,
             signatures: vec![DsseSignature {
                 sig: "test_signature".to_string(),
+                public_key: Some("dGVzdF9wdWJsaWNfa2V5".to_string()),
                 certificate: Some("cert_pem".to_string()),
                 chain: None,
                 oidc_issuer: Some("https://github.com".to_string()),
@@ -315,6 +342,9 @@ mod tests {
         let payload_bytes = BASE64.decode(&dsse.payload).unwrap();
         let attestation: Value = serde_json::from_slice(&payload_bytes).unwrap();
 
-        assert_eq!(attestation["subject"][0]["digest"]["sha256"], "abc123def456");
+        assert_eq!(
+            attestation["subject"][0]["digest"]["sha256"],
+            "abc123def456"
+        );
     }
 }

@@ -4,7 +4,7 @@
       "docker-reference": ""
     },
     "image": {
-      "docker-manifest-digest": "sha256:b46930ff751948539b25cda15d4c94e81ce91cbeda011c18ee5c06061c483ac2"
+      "docker-manifest-digest": "sha256:6d2f9326d191bf203205449dcf277dc120235b02424ccbd1e51360ed9200068c"
     },
     "type": "cosign container image signature"
   },
@@ -12,7 +12,8 @@
     "Certificate": null,
     "Chain": null,
     "Issuer": null,
-    "Signature": "j4c4TBgxdjD8Z/SVRzz9GakOyHs4yay1q5PJ+uz0as0kyRbkOuspXxZ/XVQ7oAKzsqaYy1461nFP4Fjbmb49Aw==",
+    "PublicKey": "l0qQrbKabb/kf2MjfYTszHH/VXS0ozRYuXq9a5nD/kM=",
+    "Signature": "LajptBLF1ju7kMfr5d9OmDCG+Gl5PIEEf0lGAL0PO7kMhWnwbIYSw05fqnlXwL0MKmz5kH/e/JUr8Q/JgREvBA==",
     "Subject": null
   }
 }
