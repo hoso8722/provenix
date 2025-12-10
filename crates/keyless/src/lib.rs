@@ -1,10 +1,10 @@
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ed25519_dalek::{Signer, SigningKey};
+use provenix_core::bundle::*;
 use provenix_plugin::{SignProvider, VerifyProvider};
-use provenix_utils::fulcio::{FulcioClient, OidcIdentity};
+use provenix_utils::fulcio::FulcioClient;
 use provenix_utils::rekor::RekorClient;
-use rand::rngs::OsRng;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
@@ -45,8 +45,7 @@ impl SignProvider for KeylessSignProvider {
             .map_err(|e| anyhow::anyhow!("Failed to parse attestation JSON: {}", e))?;
 
         // 2. Generate ephemeral keypair
-        let mut csprng = OsRng;
-        let signing_key = SigningKey::generate(&mut csprng);
+        let signing_key = SigningKey::from_bytes(&rand::random::<[u8; 32]>());
         let verifying_key = signing_key.verifying_key();
         let public_key_bytes = verifying_key.to_bytes();
 
@@ -171,7 +170,7 @@ impl SignProvider for KeylessSignProvider {
 fn upload_to_rekor_with_cert(
     rekor_url: &str,
     signed_envelope: &Value,
-    certificate_chain: &[String],
+    _certificate_chain: &[String],
 ) -> Result<Value> {
     // Extract public key from certificate (simplified)
     // In production, parse X.509 certificate properly
@@ -198,6 +197,131 @@ fn upload_to_rekor_with_cert(
     })
 }
 
+// ===== Phase 5b: Bundle Format Generation =====
+
+/// Creates a Sigstore Bundle v0.3 from DSSE envelope with Fulcio certificate
+pub fn create_bundle_from_dsse(
+    signed_envelope: &Value,
+    certificate_chain: &[String],
+    rekor_entry: Option<&Value>,
+) -> Result<Bundle> {
+    // Extract DSSE components
+    let payload_type = signed_envelope["payloadType"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing payloadType in DSSE envelope"))?;
+
+    let payload = signed_envelope["payload"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing payload in DSSE envelope"))?;
+
+    let signatures = signed_envelope["signatures"]
+        .as_array()
+        .ok_or_else(|| anyhow::anyhow!("Missing signatures in DSSE envelope"))?;
+
+    if signatures.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Bundle format requires exactly one signature, found {}",
+            signatures.len()
+        ));
+    }
+
+    let sig_entry = &signatures[0];
+    let sig = sig_entry["sig"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing sig in signature entry"))?;
+
+    // Parse certificate chain
+    if certificate_chain.is_empty() {
+        return Err(anyhow::anyhow!("Certificate chain is empty"));
+    }
+
+    // For v0.3, use single certificate format (leaf only)
+    let leaf_cert_pem = &certificate_chain[0];
+    let cert_der = provenix_utils::x509::parse_certificate_pem(leaf_cert_pem)
+        .map_err(|e| anyhow::anyhow!("Failed to parse leaf certificate: {}", e))?;
+
+    // Create verification material
+    let mut verification_material = VerificationMaterial {
+        content: VerificationMaterialContent::Certificate(X509Certificate {
+            raw_bytes: cert_der,
+        }),
+        tlog_entries: vec![],
+        timestamp_verification_data: None,
+    };
+
+    // Add Rekor entry if provided
+    if let Some(rekor_data) = rekor_entry {
+        if let Some(tlog_entry) = create_tlog_entry_from_rekor(rekor_data)? {
+            verification_material.tlog_entries.push(tlog_entry);
+        }
+    }
+
+    // Create DSSE envelope for bundle
+    let dsse_envelope = DsseEnvelope {
+        payload_type: payload_type.to_string(),
+        payload: payload.to_string(),
+        signatures: vec![DsseSignature {
+            keyid: sig_entry["keyid"].as_str().map(|s| s.to_string()),
+            sig: sig.to_string(),
+        }],
+    };
+
+    // Create bundle
+    let bundle = Bundle::new(
+        verification_material,
+        SignatureContent::DsseEnvelope(dsse_envelope),
+    );
+
+    // Validate bundle structure
+    bundle
+        .validate()
+        .map_err(|e| anyhow::anyhow!("Bundle validation failed: {}", e))?;
+
+    Ok(bundle)
+}
+
+/// Creates a TransparencyLogEntry from Rekor response
+fn create_tlog_entry_from_rekor(rekor_data: &Value) -> Result<Option<TransparencyLogEntry>> {
+    let uuid = rekor_data["uuid"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing uuid in Rekor data"))?;
+
+    let log_index = rekor_data["log_index"]
+        .as_u64()
+        .ok_or_else(|| anyhow::anyhow!("Missing log_index in Rekor data"))?;
+
+    // For now, create a minimal entry
+    // In production, fetch full entry from Rekor including inclusion proof
+    log::info!(
+        "Creating transparency log entry: UUID={}, LogIndex={}",
+        uuid,
+        log_index
+    );
+
+    // TODO: Fetch full Rekor entry with inclusion proof
+    // For now, return None to skip incomplete entry
+    Ok(None)
+}
+
+/// Writes a Bundle to a file
+pub fn write_bundle(bundle: &Bundle, output_path: &PathBuf) -> Result<()> {
+    // Ensure output directory exists
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    // Serialize bundle as JSON
+    let bundle_json = serde_json::to_string_pretty(bundle)
+        .map_err(|e| anyhow::anyhow!("Failed to serialize bundle: {}", e))?;
+
+    // Write to file
+    fs::write(output_path, bundle_json)
+        .map_err(|e| anyhow::anyhow!("Failed to write bundle file: {}", e))?;
+
+    log::info!("Bundle written to: {:?}", output_path);
+    Ok(())
+}
+
 // ===== Keyless Verification Provider =====
 
 /// Keyless verification provider (verifies Fulcio certificates)
@@ -220,7 +344,7 @@ impl VerifyProvider for KeylessVerifyProvider {
         &self,
         artifact: &PathBuf,
         signature: &PathBuf,
-        rekor_url: Option<&str>,
+        _rekor_url: Option<&str>,
     ) -> Result<Value> {
         log::info!("Verifying keyless signature with Fulcio certificate");
         log::info!("  Artifact:  {:?}", artifact);

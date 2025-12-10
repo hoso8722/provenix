@@ -1,3 +1,5 @@
+pub mod bundle;
+pub mod bundle_adapter;
 pub mod config;
 pub mod cosign_adapter;
 pub mod errors;
@@ -6,6 +8,7 @@ pub mod registry;
 pub mod signature_format;
 
 // re-export commonly used types
+pub use bundle::Bundle;
 pub use config::Config;
 
 pub use registry::{
