@@ -36,7 +36,8 @@ impl SignatureFormat for BundleAdapter {
         let sig = &sig_entry.sig;
 
         // Extract certificate if present
-        let certificate_pem = sig_entry.certificate
+        let certificate_pem = sig_entry
+            .certificate
             .as_ref()
             .ok_or_else(|| anyhow!("Bundle format requires certificate"))?;
 
@@ -75,8 +76,8 @@ impl SignatureFormat for BundleAdapter {
 
     fn to_dsse(&self, bundle_json: &Value) -> Result<SigDsseEnvelope> {
         // Deserialize bundle
-        let bundle: Bundle =
-            serde_json::from_value(bundle_json.clone()).map_err(|e| anyhow!("Invalid bundle format: {}", e))?;
+        let bundle: Bundle = serde_json::from_value(bundle_json.clone())
+            .map_err(|e| anyhow!("Invalid bundle format: {}", e))?;
 
         // Validate bundle
         bundle
@@ -103,26 +104,30 @@ impl SignatureFormat for BundleAdapter {
                 encode_certificate_pem(&chain.certificates[0].raw_bytes)?
             }
             VerificationMaterialContent::PublicKey(_) => {
-                return Err(anyhow!("Public key identifier not supported in DSSE conversion"));
+                return Err(anyhow!(
+                    "Public key identifier not supported in DSSE conversion"
+                ));
             }
         };
 
         // Build DSSE structure with certificate
         use crate::signature_format::DsseSignature as SigDsseSignature;
-        
+
         let sig_dsse_envelope = SigDsseEnvelope {
             payload_type: dsse_envelope.payload_type.clone(),
             payload: dsse_envelope.payload.clone(),
-            signatures: dsse_envelope.signatures.iter().map(|s| {
-                SigDsseSignature {
+            signatures: dsse_envelope
+                .signatures
+                .iter()
+                .map(|s| SigDsseSignature {
                     sig: s.sig.clone(),
                     public_key: None,
                     certificate: Some(certificate_pem.clone()),
                     chain: None,
                     oidc_issuer: None,
                     oidc_subject: None,
-                }
-            }).collect(),
+                })
+                .collect(),
         };
 
         Ok(sig_dsse_envelope)
