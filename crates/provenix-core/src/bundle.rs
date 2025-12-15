@@ -45,7 +45,7 @@ pub struct Bundle {
 pub enum SignatureContent {
     /// Simple message signature (for non-DSSE payloads)
     MessageSignature(MessageSignature),
-    
+
     /// DSSE envelope (for in-toto attestations)
     /// MUST contain exactly one signature
     DsseEnvelope(DsseEnvelope),
@@ -60,10 +60,10 @@ pub enum SignatureContent {
 pub struct MessageSignature {
     /// The message digest that was signed
     pub message_digest: MessageDigest,
-    
+
     /// The signature bytes (base64-encoded)
     pub signature: String,
-    
+
     /// Optional signature algorithm (defaults to ECDSA_SHA2_256_ASN1)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature_algorithm: Option<String>,
@@ -75,7 +75,7 @@ pub struct MessageSignature {
 pub struct MessageDigest {
     /// Digest algorithm (e.g., "sha256")
     pub algorithm: String,
-    
+
     /// Digest value (hex or base64-encoded)
     pub digest: String,
 }
@@ -89,10 +89,10 @@ pub struct MessageDigest {
 pub struct DsseEnvelope {
     /// Payload type (e.g., "application/vnd.in-toto+json")
     pub payload_type: String,
-    
+
     /// Base64-encoded payload
     pub payload: String,
-    
+
     /// Signatures (MUST be exactly one in a Bundle)
     pub signatures: Vec<DsseSignature>,
 }
@@ -104,7 +104,7 @@ pub struct DsseSignature {
     /// Optional key identifier
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keyid: Option<String>,
-    
+
     /// Signature bytes (base64-encoded)
     pub sig: String,
 }
@@ -121,12 +121,12 @@ pub struct VerificationMaterial {
     /// Key or certificate for signature verification
     #[serde(flatten)]
     pub content: VerificationMaterialContent,
-    
+
     /// Transparency log entries from Rekor
     /// Multiple entries may be present if the signature was logged multiple times
     #[serde(default)]
     pub tlog_entries: Vec<TransparencyLogEntry>,
-    
+
     /// Optional timestamp verification data (RFC3161)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp_verification_data: Option<TimestampVerificationData>,
@@ -139,12 +139,12 @@ pub enum VerificationMaterialContent {
     /// Public key identifier (for retrieving key from external keyring)
     /// MUST NOT be used with Fulcio keyless signing
     PublicKey(PublicKeyIdentifier),
-    
+
     /// X.509 certificate chain (legacy format, used in v0.1 and v0.2)
     /// First certificate MUST be the leaf certificate
     /// Subsequent certificates SHOULD be in issuing order
     X509CertificateChain(X509CertificateChain),
-    
+
     /// Single X.509 certificate (v0.3 format)
     /// MUST be the leaf certificate containing the signing key
     /// This is the preferred format for v0.3 bundles
@@ -186,24 +186,24 @@ pub struct X509Certificate {
 pub struct TransparencyLogEntry {
     /// Log index (position in the transparency log)
     pub log_index: String,
-    
+
     /// Log ID (identifies which Rekor instance)
     pub log_id: LogId,
-    
+
     /// Canonicalized JSON representation of the log entry
     pub canonicalized_body: String,
-    
+
     /// Integrated time (Unix timestamp when entry was added)
     pub integrated_time: String,
-    
+
     /// Inclusion proof (Merkle tree proof)
     pub inclusion_proof: InclusionProof,
-    
+
     /// Optional inclusion promise (signed statement from Rekor)
     /// v0.1 bundles may contain only a promise, not a proof
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inclusion_promise: Option<InclusionPromise>,
-    
+
     /// Signed Entry Timestamp (SET) from Rekor
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signed_entry_timestamp: Option<String>,
@@ -224,18 +224,18 @@ pub struct LogId {
 pub struct InclusionProof {
     /// Log index of this entry
     pub log_index: String,
-    
+
     /// Root hash of the Merkle tree at this point
     #[serde(with = "base64_serde")]
     pub root_hash: Vec<u8>,
-    
+
     /// Tree size when this entry was added
     pub tree_size: String,
-    
+
     /// Merkle tree hashes for verification
     #[serde(with = "vec_base64_serde")]
     pub hashes: Vec<Vec<u8>>,
-    
+
     /// Optional checkpoint (Signed Tree Head)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checkpoint: Option<Checkpoint>,
@@ -279,7 +279,7 @@ pub struct Rfc3161Timestamp {
 
 mod base64_serde {
     use serde::{Deserialize, Deserializer, Serializer};
-    
+
     pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -287,7 +287,7 @@ mod base64_serde {
         use base64::{engine::general_purpose::STANDARD, Engine};
         serializer.serialize_str(&STANDARD.encode(bytes))
     }
-    
+
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
         D: Deserializer<'de>,
@@ -300,7 +300,7 @@ mod base64_serde {
 
 mod vec_base64_serde {
     use serde::{Deserialize, Deserializer, Serializer};
-    
+
     pub fn serialize<S>(vecs: &[Vec<u8>], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -313,7 +313,7 @@ mod vec_base64_serde {
         }
         seq.end()
     }
-    
+
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec<u8>>, D::Error>
     where
         D: Deserializer<'de>,
@@ -336,14 +336,17 @@ impl Bundle {
             content,
         }
     }
-    
+
     /// Validates the bundle structure
     pub fn validate(&self) -> Result<(), String> {
         // Check media type
-        if !self.media_type.starts_with("application/vnd.dev.sigstore.bundle") {
+        if !self
+            .media_type
+            .starts_with("application/vnd.dev.sigstore.bundle")
+        {
             return Err(format!("Invalid media type: {}", self.media_type));
         }
-        
+
         // If DSSE envelope, ensure exactly one signature
         if let SignatureContent::DsseEnvelope(ref envelope) = self.content {
             if envelope.signatures.len() != 1 {
@@ -353,7 +356,7 @@ impl Bundle {
                 ));
             }
         }
-        
+
         // Validate transparency log entries
         for entry in &self.verification_material.tlog_entries {
             if entry.log_index.is_empty() {
@@ -363,7 +366,7 @@ impl Bundle {
                 return Err("Transparency log entry missing integrated_time".to_string());
             }
         }
-        
+
         Ok(())
     }
 }
@@ -392,7 +395,7 @@ mod tests {
                 signature_algorithm: None,
             }),
         };
-        
+
         assert!(bundle.validate().is_ok());
     }
 
@@ -411,15 +414,21 @@ mod tests {
                 payload_type: "application/vnd.in-toto+json".to_string(),
                 payload: "payload".to_string(),
                 signatures: vec![
-                    DsseSignature { keyid: None, sig: "sig1".to_string() },
-                    DsseSignature { keyid: None, sig: "sig2".to_string() },
+                    DsseSignature {
+                        keyid: None,
+                        sig: "sig1".to_string(),
+                    },
+                    DsseSignature {
+                        keyid: None,
+                        sig: "sig2".to_string(),
+                    },
                 ],
             }),
         };
-        
+
         assert!(bundle.validate().is_err());
     }
-    
+
     #[test]
     fn test_bundle_serialization() {
         let bundle = Bundle::new(
@@ -439,10 +448,10 @@ mod tests {
                 signature_algorithm: Some("ECDSA_SHA2_256_ASN1".to_string()),
             }),
         );
-        
+
         let json = serde_json::to_string_pretty(&bundle).unwrap();
         assert!(json.contains("application/vnd.dev.sigstore.bundle.v0.3+json"));
-        
+
         let deserialized: Bundle = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.media_type, bundle.media_type);
     }

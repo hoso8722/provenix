@@ -290,17 +290,78 @@ fn create_tlog_entry_from_rekor(rekor_data: &Value) -> Result<Option<Transparenc
         .as_u64()
         .ok_or_else(|| anyhow::anyhow!("Missing log_index in Rekor data"))?;
 
-    // For now, create a minimal entry
-    // In production, fetch full entry from Rekor including inclusion proof
+    let rekor_url = rekor_data
+        .get("rekor_url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("https://rekor.sigstore.dev");
+
     log::info!(
-        "Creating transparency log entry: UUID={}, LogIndex={}",
+        "Fetching full Rekor entry with inclusion proof: UUID={}, LogIndex={}",
         uuid,
         log_index
     );
 
-    // TODO: Fetch full Rekor entry with inclusion proof
-    // For now, return None to skip incomplete entry
-    Ok(None)
+    // Fetch full entry from Rekor (with inclusion proof)
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create async runtime: {}", e))?;
+
+    let rekor_entry = runtime.block_on(async {
+        let client = RekorClient::new(Some(rekor_url));
+        client
+            .get_entry(uuid)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch Rekor entry: {}", e))
+    })?;
+
+    // Extract verification data (inclusion proof, SET)
+    let verification = rekor_entry
+        .verification
+        .ok_or_else(|| anyhow::anyhow!("Missing verification data in Rekor entry"))?;
+
+    let inclusion_proof_data = verification
+        .inclusion_proof
+        .ok_or_else(|| anyhow::anyhow!("Missing inclusion proof in Rekor entry"))?;
+
+    // Convert to Bundle format
+    use provenix_utils::rekor::decode_hash;
+
+    let inclusion_proof = InclusionProof {
+        log_index: inclusion_proof_data.log_index.to_string(),
+        root_hash: decode_hash(&inclusion_proof_data.root_hash)?,
+        tree_size: inclusion_proof_data.tree_size.to_string(),
+        hashes: inclusion_proof_data
+            .hashes
+            .iter()
+            .map(|h| decode_hash(h))
+            .collect::<Result<Vec<_>>>()?,
+        checkpoint: inclusion_proof_data.checkpoint.map(|c| Checkpoint {
+            envelope: c.envelope,
+        }),
+    };
+
+    // Create log ID
+    let log_id = LogId {
+        key_id: if let Some(ref lid) = rekor_entry.log_id {
+            decode_hash(lid)?
+        } else {
+            vec![] // Empty if not provided
+        },
+    };
+
+    // Create transparency log entry
+    let tlog_entry = TransparencyLogEntry {
+        log_index: rekor_entry.log_index.to_string(),
+        log_id,
+        canonicalized_body: rekor_entry.body,
+        integrated_time: rekor_entry.integrated_time.to_string(),
+        inclusion_proof,
+        inclusion_promise: None, // v0.3 bundles use inclusion_proof, not promise
+        signed_entry_timestamp: verification.signed_entry_timestamp,
+    };
+
+    log::info!("✅ Created transparency log entry with inclusion proof");
+
+    Ok(Some(tlog_entry))
 }
 
 /// Writes a Bundle to a file
